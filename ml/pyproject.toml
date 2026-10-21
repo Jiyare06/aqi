@@ -1,0 +1,44 @@
+[project]
+name = "hazeml"
+version = "0.1.0"
+description = "HazeBusters ML: labels, training, evaluation"
+readme = "README.md"
+authors = [
+    { name = "ASR222", email = "161878933+ASR222@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "cpcb-aqi",
+    "numpy>=2.5.3",
+    "onnx>=1.23.2",
+    "onnxruntime>=1.31.0",
+    "pandas>=3.0.6",
+    "pyarrow>=26.0.0",
+    "python-dotenv>=1.2.4",
+    "scikit-learn>=1.9.1",
+    "torch>=2.11.0",
+    "torchvision>=0.26.0",
+    "ultralytics>=8.4.175",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
+cpcb-aqi = { path = "../shared", editable = true }
