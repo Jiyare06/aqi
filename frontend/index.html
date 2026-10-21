@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>HazeBusters</title>
+  <meta name="description" content="How bad the air likely is today, where that number comes from, and what to do.">
+  <meta name="theme-color" content="#0b3d78">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/leaf-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="icons/leaf-192.png">
+  <link rel="preload" as="image" href="bg/bg-portrait.webp" media="(max-width: 767px)" fetchpriority="high">
+  <link rel="preload" as="image" href="bg/bg.webp" media="(min-width: 768px)" fetchpriority="high">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+Devanagari:wght@400;600&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Static sky: one fixed layer (not background-attachment: fixed, which iOS Safari breaks). -->
+  <div class="sky" aria-hidden="true">
+    <picture>
+      <source media="(max-width: 767px)" srcset="bg/bg-portrait.webp">
+      <img src="bg/bg.webp" alt="" fetchpriority="high" decoding="async">
+    </picture>
+    <div class="scrim"></div>
+  </div>
+
+  <header class="top">
+    <h1><img class="mark" src="icons/leaf-192.png" alt="" width="32" height="32">HazeBusters</h1>
+    <p class="tag">Air today, where the number comes from, and what to do.</p>
+  </header>
+
+  <main>
+    <!-- Input -->
+    <section id="screen-input" class="screen">
+      <form id="job-form" novalidate>
+        <fieldset class="card">
+          <legend>Who is this for?</legend>
+          <div class="choices">
+            <label class="choice"><input type="radio" name="profile" value="school" checked><span>School</span></label>
+            <label class="choice"><input type="radio" name="profile" value="worker"><span>Outdoor worker</span></label>
+            <label class="choice"><input type="radio" name="profile" value="general"><span>General</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="card">
+          <legend>Location</legend>
+          <button type="button" id="btn-locate" class="btn secondary">Use my location</button>
+          <p id="loc-status" class="muted" aria-live="polite"></p>
+          <label for="city" class="sub">Or pick a city</label>
+          <select id="city">
+            <option value="">Choose a city</option>
+            <option value="23.3441,85.3096">Ranchi</option>
+            <option value="28.6139,77.2090">Delhi</option>
+            <option value="17.3850,78.4867">Hyderabad</option>
+            <option value="25.5941,85.1376">Patna</option>
+            <option value="22.8046,86.2029">Jamshedpur</option>
+            <option value="23.7957,86.4304">Dhanbad</option>
+            <option value="22.5726,88.3639">Kolkata</option>
+            <option value="19.0760,72.8777">Mumbai</option>
+            <option value="22.7196,75.8577">Indore</option>
+          </select>
+        </fieldset>
+
+        <fieldset class="card">
+          <legend>Video</legend>
+          <p class="hint">Hold the phone steady for about <strong>10 seconds</strong>, pointed at the sky and street.</p>
+          <div class="row">
+            <label class="btn secondary file-btn">
+              <input type="file" id="video-record" class="js-video" accept="video/*" capture="environment">
+              <span>Record clip</span>
+            </label>
+            <label class="btn secondary file-btn">
+              <input type="file" id="video-gallery" class="js-video" accept="video/*">
+              <span>Choose from gallery</span>
+            </label>
+          </div>
+          <p id="video-label" class="muted" aria-live="polite">No clip yet.</p>
+          <p id="video-warn" class="warn" hidden></p>
+          <video id="video-probe" muted playsinline preload="metadata" hidden></video>
+        </fieldset>
+
+        <p id="form-error" class="error" role="alert" hidden></p>
+        <button type="submit" class="btn primary">Check the air</button>
+      </form>
+    </section>
+
+    <!-- Progress -->
+    <section id="screen-progress" class="screen" hidden>
+      <div class="card">
+        <ol class="steps">
+          <li data-step="create">Starting</li>
+          <li data-step="upload">Uploading <span id="upload-pct"></span>
+            <progress id="upload-bar" max="100" value="0"></progress></li>
+          <li data-step="analyse">Analysing</li>
+          <li data-step="done">Done</li>
+        </ol>
+      </div>
+      <div id="progress-error" class="card error-card" hidden>
+        <p id="progress-error-msg" role="alert"></p>
+        <div class="row">
+          <button type="button" id="btn-retry" class="btn primary">Retry</button>
+          <button type="button" class="btn secondary js-restart">Start over</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Result -->
+    <section id="screen-result" class="screen" hidden>
+      <div id="result"></div>
+      <button type="button" class="btn secondary js-restart">New check</button>
+    </section>
+  </main>
+
+  <footer class="credits card">
+    <p>Air-quality model data: <a href="https://atmosphere.copernicus.eu/" rel="noopener">CAMS</a>
+      (Copernicus Atmosphere Monitoring Service) via <a href="https://open-meteo.com/" rel="noopener">Open-Meteo</a>.
+      Station data: <a href="https://aqicn.org/" rel="noopener">World Air Quality Index project (WAQI)</a>.
+      AQI is CPCB-style, computed from PM2.5/PM10.</p>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="format.js"></script>
+  <script src="api.js"></script>
+  <script src="result.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

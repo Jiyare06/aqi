@@ -1,0 +1,14 @@
+{
+  "name": "HazeBusters",
+  "short_name": "HazeBusters",
+  "description": "How bad the air likely is today, where that number comes from, and what to do.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1d6fd0",
+  "theme_color": "#0b3d78",
+  "icons": [
+    {"src": "icons/leaf-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icons/leaf-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}
