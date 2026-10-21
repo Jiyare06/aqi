@@ -1,0 +1,185 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  HazeBusters skeleton: HTTP API (create/get job) -> presigned S3 upload -> container Lambda processor
+  (frames + stub causes + air from WAQI/CAMS + template advice) -> DynamoDB. Region: ap-south-1.
+
+Parameters:
+  WaqiToken:
+    Type: String
+    NoEcho: true
+    Description: WAQI API token (from .env, via samconfig.toml parameter_overrides)
+
+Globals:
+  Function:
+    Architectures: [x86_64]
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref JobsTable
+        # Name string, not !Ref UploadsBucket: avoids the bucket <-> processor circular dependency.
+        BUCKET_NAME: !Sub "${AWS::StackName}-uploads-${AWS::AccountId}"
+
+Resources:
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      # Stage-wide limit so a flood of requests can't fan out Bedrock/Polly costs. (Reserving processor concurrency
+      # isn't possible: the account's Lambda limit is 10, all of which must stay unreserved.)
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 10
+        ThrottlingRateLimit: 5
+      CorsConfiguration:
+        AllowOrigins: ["*"]
+        AllowMethods: [GET, POST, OPTIONS]
+        AllowHeaders: [content-type]
+
+  JobsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: job_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: job_id
+          KeyType: HASH
+
+  UploadsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-uploads-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [PUT, GET]
+            AllowedHeaders: ["*"]
+            AllowedOrigins: ["*"]
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-uploads
+            Status: Enabled
+            Prefix: uploads/
+            ExpirationInDays: 7
+          - Id: expire-audio
+            Status: Enabled
+            Prefix: audio/
+            ExpirationInDays: 7
+          - Id: expire-overlays
+            Status: Enabled
+            Prefix: overlays/
+            ExpirationInDays: 7
+
+  CreateJobFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/create_job/
+      Handler: app.handler
+      Runtime: python3.12
+      MemorySize: 256
+      Timeout: 10
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref JobsTable
+        - S3WritePolicy:
+            BucketName: !Sub "${AWS::StackName}-uploads-${AWS::AccountId}"
+      Events:
+        Create:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /jobs
+            Method: POST
+
+  GetJobFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/get_job/
+      Handler: app.handler
+      Runtime: python3.12
+      MemorySize: 256
+      Timeout: 10
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref JobsTable
+        - Statement:
+            - Effect: Allow
+              Action: s3:GetObject  # presigned audio/overlay URLs are signed with this role
+              Resource:
+                - !Sub "arn:${AWS::Partition}:s3:::${AWS::StackName}-uploads-${AWS::AccountId}/audio/*"
+                - !Sub "arn:${AWS::Partition}:s3:::${AWS::StackName}-uploads-${AWS::AccountId}/overlays/*"
+      Events:
+        Get:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /jobs/{id}
+            Method: GET
+
+  ProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      MemorySize: 3008
+      Timeout: 300
+      EphemeralStorage:
+        Size: 2048
+      Environment:
+        Variables:
+          WAQI_TOKEN: !Ref WaqiToken
+          # Amazon Nova 2 Lite (global profile). Anthropic models need a Marketplace subscription this account
+          # can't make; to switch back: in.anthropic.claude-haiku-4-5-20251001-v1:0 (+ its IAM ARNs).
+          BEDROCK_MODEL_ID: global.amazon.nova-2-lite-v1:0
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref JobsTable
+        - S3ReadPolicy:
+            BucketName: !Sub "${AWS::StackName}-uploads-${AWS::AccountId}"
+        - Statement:
+            - Effect: Allow
+              Action: polly:SynthesizeSpeech
+              Resource: "*"
+            - Effect: Allow
+              Action: s3:PutObject  # audio + CAM overlays only; never uploads/ (that prefix triggers this function)
+              Resource:
+                - !Sub "arn:${AWS::Partition}:s3:::${AWS::StackName}-uploads-${AWS::AccountId}/audio/*"
+                - !Sub "arn:${AWS::Partition}:s3:::${AWS::StackName}-uploads-${AWS::AccountId}/overlays/*"
+            # Global inference profile; `aws bedrock get-inference-profile` (9 Oct 2026) lists the region-less
+            # foundation-model ARN (global routing) plus the ap-south-1 one.
+            - Effect: Allow
+              Action: bedrock:InvokeModel
+              Resource:
+                - !Sub "arn:${AWS::Partition}:bedrock:ap-south-1:${AWS::AccountId}:inference-profile/global.amazon.nova-2-lite-v1:0"
+                - !Sub "arn:${AWS::Partition}:bedrock:::foundation-model/amazon.nova-2-lite-v1:0"
+                - !Sub "arn:${AWS::Partition}:bedrock:ap-south-1::foundation-model/amazon.nova-2-lite-v1:0"
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0  # the handler records failures itself; retries would reprocess the clip
+      Events:
+        Upload:
+          Type: S3
+          Properties:
+            Bucket: !Ref UploadsBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: uploads/
+    Metadata:
+      DockerContext: ..
+      Dockerfile: infra/processor/Dockerfile
+      DockerTag: python3.12-v2
+
+Outputs:
+  ApiUrl:
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}"
+  BucketName:
+    Value: !Ref UploadsBucket
+  TableName:
+    Value: !Ref JobsTable
+  ProcessorFunctionName:
+    Value: !Ref ProcessorFunction
