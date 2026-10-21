@@ -1,0 +1,33 @@
+{
+  "job_id": "...",
+  "status": "processing|done|failed",
+  "created_at": "...",
+  "profile": "school|worker|general",
+  "location": {"lat": 0, "lon": 0, "place": "Ranchi"},
+  "air": {
+    "measured": {"source": "WAQI", "station": "...", "dist_km": 0, "updated_at": "...", "pm25": 0, "pm10": 0, "aqi_cpcb": 0, "band": 0},
+    "modelled": {"source": "CAMS via Open-Meteo", "grid_km": 45, "valid_at": "...", "pm25": 0, "pm10": 0, "aqi_cpcb": 0, "band": 0},
+    "aqi_cpcb": 0,
+    "band": 0,
+    "used": "measured|modelled",
+    "confidence": "high|medium|low",
+    "confidence_reason": "..."
+  },
+  "forecast_today": [{"time": "...", "pm25": 0, "aqi_cpcb": 0, "band": 0}],
+  "forecast_tomorrow": [{"time": "...", "pm25": 0, "aqi_cpcb": 0, "band": 0}],
+  "decision": {"for": "today|tomorrow", "outdoor": "yes|limit|no", "best_window": {"start": "...", "end": "..."}, "reason_code": "..."},
+  "seasonal_line": "...",
+  "causes": {
+    "frames_used": 0,
+    "frames_rejected": 0,
+    "reject_reasons": [],
+    "smoke": {"present": false, "prob": 0},
+    "fire": {"present": false, "prob": 0},
+    "boxes": [{"cls": "smoke", "conf": 0, "frame": 0, "xywh": [0, 0, 0, 0]}],
+    "vehicle_count": "int|null (median vehicles per sampled frame, YOLO11n; null if the vehicle model failed)",
+    "gradcam_key": null
+  },
+  "advice": {"en": "...", "hi": "...", "source": "bedrock|template"},
+  "audio": {"hi_key": null, "en_key": null},
+  "caveats": []
+}

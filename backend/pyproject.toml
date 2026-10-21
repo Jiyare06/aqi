@@ -1,0 +1,30 @@
+[project]
+name = "hazebusters-backend"
+version = "0.1.0"
+description = "HazeBusters backend (air: WAQI + CAMS via Open-Meteo)"
+readme = "README.md"
+authors = [
+    { name = "ASR222", email = "161878933+ASR222@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "cpcb-aqi",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "air"
+
+[tool.uv.sources]
+cpcb-aqi = { path = "../shared", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
