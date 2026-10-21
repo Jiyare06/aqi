@@ -1,0 +1,22 @@
+[project]
+name = "cpcb-aqi"
+version = "0.1.0"
+description = "CPCB-style AQI from PM2.5/PM10 (no dependencies)"
+readme = "README.md"
+authors = [
+    { name = "ASR222", email = "161878933+ASR222@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
