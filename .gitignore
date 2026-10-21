@@ -1,0 +1,20 @@
+.env
+.venv/
+data/
+node_modules/
+__pycache__/
+.aws-sam/
+runs/
+*.onnx
+*.pt
+*.pth
+*.keras
+*.zip
+samconfig.toml
+infra/processor/models/
+
+# Real API result used by ?mock=1 (local only)
+frontend/mock/
+
+# Bundled design export (1.8 MB), reference only
+design/*.html

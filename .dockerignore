@@ -1,0 +1,10 @@
+# Only the processor image uses the repo root as build context; send just what it copies.
+*
+!shared/pyproject.toml
+!shared/README.md
+!shared/src/
+!backend/src/air/
+# infra/processor/ includes models/ (ONNX + head, gitignored but needed in the image)
+!infra/processor/
+**/__pycache__
+**/*.pyc
